@@ -9,17 +9,17 @@ import os
 import sys
 import time
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram import InlineQueryResultArticle, ParseMode, InputTextMessageContent
-from telegram.ext import Updater, InlineQueryHandler, CommandHandler, MessageHandler, Filters
-from telegram.utils.helpers import escape_markdown
-from .config import access_token
+from telegram import InlineQueryResultArticle, ParseMode
+from telegram import InputTextMessageContent
+from telegram.ext import Updater, InlineQueryHandler, CommandHandler
+from config import access_token
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
-g = Github("access_token")
+g = Github(access_token)
 
 
 def start(update, context):
@@ -43,7 +43,7 @@ def get_repo(query):
     name = repo.name
     repo_url = repo.html_url
     clone_url = repo.clone_url
-    description = repo.description
+    # description = repo.description
     stars = repo.stargazers_count
     language = repo.language
     owner_name = repo.owner.name
@@ -74,7 +74,7 @@ def search_callback(update, context):
     data = result.split(".")[1].split("/")
     base = "https://github.com/"
     username = data[1]
-    repo_name = data[2]
+    # repo_name = data[2]
     markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=str(base+username)), InlineKeyboardButton("🗄 repository", url=link)]])
     context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
 
@@ -82,13 +82,14 @@ def search_callback(update, context):
 def download(update, context):
     user_says = context.args
     chat_id = update.message.chat.id
-    query_type = str(user_says[0])
-    query_term = str(user_says[1:][0])
-    url=f"https://github.com/{query_term}/archive/master.zip"
-    try:
-        context.bot.send_document(chat_id=chat_id, document=url, caption=f"✅ download successful for repository: {query_term}")
-    except:
-        context.bot.send_message(chat_id=chat_id, text="repository not found!")
+    # query_type = str(user_says[0])
+    query_term = str(user_says[0])
+    url = f"https://github.com/{query_term}/archive/master.zip"
+
+    caption = f"✅ download successful for repository: {query_term}"
+    context.bot.send_document(chat_id=chat_id, document=url, caption=caption)
+    # except:
+    #   context.bot.send_message(chat_id=chat_id, text="repository not found!")
 
 
 def emoji_callback(update, context):
