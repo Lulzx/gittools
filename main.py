@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import os
-import requests
-import sys
-import logging
 
 from github import Github
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from uuid import uuid4
+import emojis
+import logging
+import os
+import sys
+import time
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineQueryResultArticle, ParseMode, InputTextMessageContent
+from telegram.ext import Updater, InlineQueryHandler, CommandHandler, MessageHandler, Filters
+from telegram.utils.helpers import escape_markdown
+from .config import access_token
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+g = Github("access_token")
 
 
 def start(update, context):
@@ -22,43 +30,90 @@ def help(update, context):
     update.message.reply_text('Help!')
 
 
-def fetch_url(url, query):
-    params = urlencode({'q': query})
-    final = url.format(params)
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(self.cookies))
-    response = opener.open(final).read().decode('utf-8')
-    dict_response = json.loads(response)
-    return dict_response
+def fetch_url(query_term, query_type):
+    if query_type in ["u", "user"]:
+        result = get_user(query_term)
+    elif query_type in ["r", "repo"]:
+        result = get_repo(query_term)
+    return result
 
 
 def get_repo(query):
-    base_url = 'https://api.github.com/search/repositories?{}&per_page=50'
-    res = fetch_url(base_url, query)
-    resp = []
-    for item in res['items']:
-        resp.append((item['html_url'], item['description']))
-    return resp
+    repo = g.get_repo(query)
+    name = repo.name
+    repo_url = repo.html_url
+    clone_url = repo.clone_url
+    description = repo.description
+    stars = repo.stargazers_count
+    language = repo.language
+    owner_name = repo.owner.name
+    owner_url = repo.owner.html_url
+    response = f"""🗄 [{name}]({repo_url}) by [{owner_name}]({owner_url})"""
+    response += f"""in #{language}\n⭐️ {stars} Stars\n📥 [Clone]({clone_url})"""
+    return response
 
 
 def get_user(query):
-    base_url = 'https://api.github.com/search/users?{}&per_page=50'
-    res = fetch_url(base_url, query)
-    respo = []
-    for item in res['items']:
-        respo.append((item['login'], item['html_url']))
-    return respo
+    user = g.get_user(query)
+    name = "👥 " + user.name
+    location = "📌 " + user.location
+    bio = "🎭 " + user.bio
+    # avatar = user.avatar_url
+    response = "{}\n{}\n{}".format(name, location, bio)
+    response += "\n🔗 https://github.com/{}".format(query)
+    return response
 
 
 def search_callback(update, context):
-    user_says = context.args # " ".join(context.args)
-    query_type = user_says[0]
-    query_term = user_says[1:]
-    # make a tree structure for the list of repositories result
-    update.message.reply_text("You said: " + user_says)
+    user_says = context.args
+    chat_id = update.message.chat.id
+    query_type = str(user_says[0])
+    query_term = str(user_says[1:][0])
+    result = fetch_url(query_term, query_type)
+    link = result.split("[Clone](")[-1][:-1]
+    data = result.split(".")[1].split("/")
+    base = "https://github.com/"
+    username = data[1]
+    repo_name = data[2]
+    markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=str(base+username)), InlineKeyboardButton("🗄 repository", url=link)]])
+    context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
 
 
-def echo(update, context):
-    update.message.reply_text(update.message.text)
+def download(update, context):
+    user_says = context.args
+    chat_id = update.message.chat.id
+    query_type = str(user_says[0])
+    query_term = str(user_says[1:][0])
+    url=f"https://github.com/{query_term}/archive/master.zip"
+    try:
+        context.bot.send_document(chat_id=chat_id, document=url, caption=f"✅ download successful for repository: {query_term}")
+    except:
+        context.bot.send_message(chat_id=chat_id, text="repository not found!")
+
+
+def emoji_callback(update, context):
+    chat_id = update.message.chat.id
+    emojiset = g.get_emojis()
+    for x in emojiset:
+        x = f":{x}:"
+        context.bot.send_message(chat_id=chat_id, text=emojis.encode(x))
+        time.sleep(0.1)
+
+
+def inlinequery(update, context):
+    query = update.inline_query.query.split(" ")
+    query_type = query[0]
+    query_term = query[1]
+    result = fetch_url(query_term, query_type)
+    results = [
+        InlineQueryResultArticle(
+            id=uuid4(),
+            title="Result",
+            input_message_content=InputTextMessageContent(
+                "{}".format(result),
+                parse_mode=ParseMode.MARKDOWN))]
+
+    update.inline_query.answer(results, cache_time=3)
 
 
 def error(update, context):
@@ -75,7 +130,9 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("search", search_callback))
-    dp.add_handler(MessageHandler(Filters.text, echo))
+    dp.add_handler(CommandHandler("emoji", emoji_callback))
+    dp.add_handler(CommandHandler("download", download))
+    dp.add_handler(InlineQueryHandler(inlinequery))
     dp.add_error_handler(error)
     updater.start_polling()
     logger.info("Ready to rock..!")
