@@ -1,3 +1,4 @@
 requests
 PyGithub
 python-telegram-bot
+emojis

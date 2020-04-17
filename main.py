@@ -49,7 +49,7 @@ def get_repo(query):
     owner_name = repo.owner.name
     owner_url = repo.owner.html_url
     response = f"""🗄 [{name}]({repo_url}) by [{owner_name}]({owner_url})"""
-    response += f"""in #{language}\n⭐️ {stars} Stars\n📥 [Clone]({clone_url})"""
+    response += f""" in #{language}\n⭐️ {stars} Stars\n📥 [Clone]({clone_url})"""
     return response
 
 
