@@ -35,6 +35,8 @@ def fetch_url(query_term, query_type):
         result = get_user(query_term)
     elif query_type in ["r", "repo"]:
         result = get_repo(query_term)
+    else:
+        result = "NIL"
     return result
 
 
@@ -66,17 +68,21 @@ def get_user(query):
 
 def search_callback(update, context):
     user_says = context.args
-    chat_id = update.message.chat.id
-    query_type = str(user_says[0])
-    query_term = str(user_says[1:][0])
-    result = fetch_url(query_term, query_type)
-    link = result.split("[Clone](")[-1][:-1]
-    data = result.split(".")[1].split("/")
-    base = "https://github.com/"
-    username = data[1]
-    # repo_name = data[2]
-    markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=str(base+username)), InlineKeyboardButton("🗄 repository", url=link)]])
-    context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
+    if len(user_says):
+        chat_id = update.message.chat.id
+        query_type = str(user_says[0])
+        query_term = str(user_says[1:][0])
+        result = fetch_url(query_term, query_type)
+        result is not "NIL":
+        link = result.split("[Clone](")[-1][:-1]
+        data = result.split(".")[1].split("/")
+        base = "https://github.com/"
+        username = data[1]
+        # repo_name = data[2]
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=str(base+username)), InlineKeyboardButton("🗄 repository", url=link)]])
+        context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
+    else:
+        return
 
 
 def download(update, context):
@@ -102,14 +108,21 @@ def emoji_callback(update, context):
 
 
 def inlinequery(update, context):
-    query = update.inline_query.query.split(" ")
-    query_type = query[0]
-    query_term = query[1]
+    try:
+        query = update.inline_query.query.split(" ")
+        query_type = query[0]
+        query_term = query[1]
+    except:
+        return
     result = fetch_url(query_term, query_type)
+    title = "Result"
+    if result is "NIL":
+        title = "No results found."
+        result = "No results found."
     results = [
         InlineQueryResultArticle(
             id=uuid4(),
-            title="Result",
+            title=title,
             input_message_content=InputTextMessageContent(
                 "{}".format(result),
                 parse_mode=ParseMode.MARKDOWN))]
