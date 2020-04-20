@@ -73,7 +73,6 @@ def search_callback(update, context):
         query_type = str(user_says[0])
         query_term = str(user_says[1:][0])
         result = fetch_url(query_term, query_type)
-        result is not "NIL":
         link = result.split("[Clone](")[-1][:-1]
         data = result.split(".")[1].split("/")
         base = "https://github.com/"
