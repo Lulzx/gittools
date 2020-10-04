@@ -12,13 +12,13 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import InlineQueryResultArticle, ParseMode
 from telegram import InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
-from config import access_token
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
+access_token = os.environ.get("access_token")
 g = Github(access_token)
 
 
@@ -137,7 +137,7 @@ def main():
     try:
         TOKEN = sys.argv[1]
     except IndexError:
-        TOKEN = os.environ.get("TOKEN")
+        TOKEN = os.environ.get("telegram_token")
     updater = Updater(TOKEN, use_context=True)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", start))
