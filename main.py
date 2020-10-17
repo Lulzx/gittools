@@ -16,7 +16,7 @@ from telegram import InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
