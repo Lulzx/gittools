@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from github import Github
-from uuid import uuid4
-import emojis
 import logging
 import os
 import sys
 import time
+from itertools import islice
+from uuid import uuid4
+
+import emojis
+from github import Github
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram import InlineQueryResultArticle, ParseMode
 from telegram import InputTextMessageContent
 from telegram.ext import Updater, InlineQueryHandler, CommandHandler
 
 logging.basicConfig(format='%(asctime)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +86,10 @@ def search_callback(update, context):
             link = url + "?tab=repositories"
         else:
             button_text = "🗄 repository"
-        markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=url), InlineKeyboardButton(button_text, url=link)]])
-        context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
+        markup = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("👤 profile", url=url), InlineKeyboardButton(button_text, url=link)]])
+        context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup,
+                                 parse_mode=ParseMode.MARKDOWN)
     else:
         return
 
@@ -114,23 +118,51 @@ def emoji_callback(update, context):
 
 def inlinequery(update, context):
     try:
-        query = update.inline_query.query.split(" ")
-        query_type = query[0]
-        query_term = query[1]
+        query = update.inline_query.query  # .split(" ")
+        # query_type = query[0]
+        # query_term = query[1]
+        keywords = [keyword.strip() for keyword in query.split(',')]
     except:
         return
-    result = fetch_url(query_term, query_type)
+    query = '+'.join(keywords) + '+in:readme+in:description'
+    result = g.search_repositories(query, 'stars', 'desc')
+
+    print(f'Found {result.totalCount} repo(s)')
+
+    # result = fetch_url(query_term, query_type)
     title = "Result"
-    if result == "NIL":
+    results = list()
+    if result.totalCount == 0:
         title = "No results found."
-        result = "No results found."
-    results = [
-        InlineQueryResultArticle(
-            id=uuid4(),
-            title=title,
-            input_message_content=InputTextMessageContent(
-                "{}".format(result),
-                parse_mode=ParseMode.MARKDOWN))]
+        content = "No results found."
+        results.append(
+            InlineQueryResultArticle(
+                id=uuid4(),
+                title=title,
+                input_message_content=InputTextMessageContent(
+                    "{}".format(content),
+                    parse_mode=ParseMode.MARKDOWN)))
+        update.inline_query.answer(results, cache_time=3)
+    stop = 10
+    for repo in islice(result, 0, stop):
+        name = repo.name
+        repo_url = repo.html_url
+        clone_url = repo.clone_url
+        description = repo.description
+        stars = repo.stargazers_count
+        language = repo.language
+        owner_name = repo.owner.name
+        owner_url = repo.owner.html_url
+        response = f"""🗄 [{name}]({repo_url}) by [{owner_name}]({owner_url})"""
+        response += f""" in #{language}\n⭐️ {stars} Stars\n📥 [Clone]({clone_url})"""
+        results.append(
+            InlineQueryResultArticle(
+                id=uuid4(),
+                title=name,
+                description=description,
+                input_message_content=InputTextMessageContent(
+                    "{}".format(response),
+                    parse_mode=ParseMode.MARKDOWN)))
 
     update.inline_query.answer(results, cache_time=3)
 
