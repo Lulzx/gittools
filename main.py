@@ -76,9 +76,15 @@ def search_callback(update, context):
         link = result.split("[Clone](")[-1][:-1]
         data = result.split(".")[1].split("/")
         base = "https://github.com/"
-        username = data[1]
+        username = query_term
         # repo_name = data[2]
-        markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=str(base+username)), InlineKeyboardButton("🗄 repository", url=link)]])
+        url = base + username
+        if query_type == "u":
+            button_text = "🗄 repositories"
+            link = url + "?tab=repositories"
+        else:
+            button_text = "🗄 repository"
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton("👤 profile", url=url), InlineKeyboardButton(button_text, url=link)]])
         context.bot.send_message(chat_id=chat_id, text="{}".format(result), reply_markup=markup, parse_mode=ParseMode.MARKDOWN)
     else:
         return
@@ -115,7 +121,7 @@ def inlinequery(update, context):
         return
     result = fetch_url(query_term, query_type)
     title = "Result"
-    if result is "NIL":
+    if result == "NIL":
         title = "No results found."
         result = "No results found."
     results = [
